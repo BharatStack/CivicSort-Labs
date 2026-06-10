@@ -2,16 +2,16 @@
 
 ## Project info
 
-**URL**: www.wasteconnect.live
+**URL**: www.civisortlabs.site
 
 
-🌱 WasteConnect
+🌱 CivicSort Labs
 
 A web-based waste management system designed to streamline pickup scheduling, digital payments, user wallets, and more—aimed at improving waste-management workflows.
 
  📖 Overview 
 
- WasteConnect offers a tech-forward solution by digitizing service interactions—enabling scheduling, payments, and user engagement in one system.
+CivicSort Labs offers a tech-forward solution by digitizing service interactions—enabling scheduling, payments, and user engagement in one system.
 
 🧩 Features
 
