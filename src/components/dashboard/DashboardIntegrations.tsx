@@ -319,14 +319,14 @@ const DashboardIntegrations = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Info className="h-5 w-5" />
-                About WasteConnect
+                About CivicSort Labs
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <h3 className="font-semibold mb-2">Our Mission</h3>
                 <p className="text-gray-600">
-                  WasteConnect is dedicated to revolutionizing waste management through technology, 
+                  CivicSort Labs is dedicated to revolutionizing waste management through technology, 
                   promoting circular economy principles, and enabling sustainable practices across 
                   all stakeholders in the waste management ecosystem.
                 </p>
