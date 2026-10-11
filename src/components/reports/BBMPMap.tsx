@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, CircleMarker, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
+import { maplibreGL } from '@maplibre/maplibre-gl-leaflet';
 import { BBMP_WARDS, BBMP_ZONES, BANGALORE_CENTER, findNearestWard, type BBMPWard } from '@/data/bbmpWards';
 import { MapPin, Navigation } from 'lucide-react';
 
@@ -13,7 +15,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-interface BBMPMapProps {
+export interface BBMPMapProps {
   issues?: Array<{
     id: string;
     title: string;
@@ -35,11 +37,49 @@ interface BBMPMapProps {
   pinLocation?: { lat: number; lng: number } | null;
 }
 
+// Basemap: OpenFreeMap vector tiles — free, no API key, no usage limits (openfreemap.org)
+const OPENFREEMAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+const OPENFREEMAP_ATTRIBUTION =
+  '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a>';
+
+// Vector tiles need WebGL; very old Android WebViews fall back to OSM raster tiles
+const HAS_WEBGL = (() => {
+  try {
+    const canvas = document.createElement('canvas');
+    return Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+  } catch {
+    return false;
+  }
+})();
+
+function VectorBasemap() {
+  const map = useMap();
+  useEffect(() => {
+    const layer = maplibreGL({
+      style: OPENFREEMAP_STYLE,
+      attributionControl: { customAttribution: OPENFREEMAP_ATTRIBUTION },
+    }).addTo(map);
+    return () => {
+      map.removeLayer(layer);
+    };
+  }, [map]);
+  return null;
+}
+
+// Tap/click on the map moves the report pin
+function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click: (e) => onMapClick(e.latlng.lat, e.latlng.lng),
+  });
+  return null;
+}
+
 // Component to handle map events and flying to locations
 function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap();
   useEffect(() => {
-    map.flyTo(center, zoom, { duration: 1.5 });
+    // setView (not flyTo): the MapLibre basemap layer doesn't redraw after flyTo animations
+    map.setView(center, zoom, { animate: true });
   }, [center, zoom, map]);
   return null;
 }
@@ -100,14 +140,19 @@ const BBMPMap: React.FC<BBMPMapProps> = ({
         zoom={mapZoom}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
-        attributionControl={false}
+        attributionControl={true}
       >
-        <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://carto.com">CARTO</a>'
-        />
-        
+        {HAS_WEBGL ? (
+          <VectorBasemap />
+        ) : (
+          <TileLayer
+            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+        )}
+
         <MapController center={mapCenter} zoom={mapZoom} />
+        {interactive && onMapClick && <MapClickHandler onMapClick={onMapClick} />}
 
         {/* Ward markers — zone-colored circles */}
         {BBMP_WARDS.map((ward) => {
