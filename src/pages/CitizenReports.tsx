@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { BBMP_WARDS, BBMP_ZONES, ISSUE_CATEGORIES, findNearestWard, getWardsByZo
 import BBMPMap from '@/components/reports/BBMPMap';
 import WardIssuePanel from '@/components/reports/WardIssuePanel';
 import IssueCard from '@/components/reports/IssueCard';
+import TrackReportPanel from '@/components/reports/TrackReportPanel';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface Report {
@@ -30,10 +31,13 @@ interface Report {
   ward_name?: string | null;
   vote_count?: number;
   user_id: string | null;
+  token?: string | null;
 }
 
 const CitizenReports: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const trackToken = searchParams.get('track');
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -80,11 +84,12 @@ const CitizenReports: React.FC = () => {
 
       if (error) throw error;
 
-      // Auto-filter: remove stale issues (no activity for 21+ days, not resolved)
+      // Auto-filter: remove stale issues (no activity for 21+ days, not resolved).
+      // Resolved reports are kept here for the stats, but not shown in the public list/map.
       const STALE_DAYS = 21;
       const now = Date.now();
       const activeReports = (data || []).filter((r: any) => {
-        if (r.status === 'resolved') return true; // always show resolved
+        if (r.status === 'resolved') return true;
         const lastActivity = r.last_activity_at || r.created_at;
         const daysSince = Math.floor((now - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24));
         return daysSince < STALE_DAYS;
@@ -98,13 +103,17 @@ const CitizenReports: React.FC = () => {
     }
   };
 
+  // Public dashboard shows only open issues; resolved ones stay in the DB and are found via token tracking
+  const openReports = useMemo(() => reports.filter(r => r.status !== 'resolved'), [reports]);
+
   // Filter + search
   const filteredReports = useMemo(() => {
-    let result = [...reports];
+    let result = [...openReports];
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(r =>
+        r.token?.toLowerCase().includes(q) ||
         r.title.toLowerCase().includes(q) ||
         r.description?.toLowerCase().includes(q) ||
         r.location?.toLowerCase().includes(q) ||
@@ -138,7 +147,7 @@ const CitizenReports: React.FC = () => {
     }
 
     return result;
-  }, [reports, searchQuery, filterZone, filterCategory, filterStatus, sortBy]);
+  }, [openReports, searchQuery, filterZone, filterCategory, filterStatus, sortBy]);
 
   // Analytics data
   const analyticsData = useMemo(() => {
@@ -240,6 +249,8 @@ const CitizenReports: React.FC = () => {
 
       {/* Tab Navigation */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <TrackReportPanel initialToken={trackToken} />
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-gray-200 -mx-4 px-4 sm:-mx-6 sm:px-6">
             <TabsList className="h-12 bg-transparent gap-1 w-full justify-start">
@@ -271,7 +282,7 @@ const CitizenReports: React.FC = () => {
           <TabsContent value="map" className="mt-0 -mx-4 sm:-mx-6">
             <div className="relative" style={{ height: 'calc(100vh - 280px)', minHeight: '500px' }}>
               <BBMPMap
-                issues={reports.filter(r => r.status !== 'resolved').map(r => ({
+                issues={openReports.map(r => ({
                   id: r.id,
                   title: r.title,
                   latitude: r.latitude,
@@ -308,7 +319,7 @@ const CitizenReports: React.FC = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search issues..."
+                    placeholder="Search issues or token..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 rounded-xl h-10 border-gray-200"
@@ -345,7 +356,6 @@ const CitizenReports: React.FC = () => {
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
@@ -362,7 +372,7 @@ const CitizenReports: React.FC = () => {
 
             {/* Results count */}
             <p className="text-sm text-gray-500 mb-4">
-              Showing {filteredReports.length} of {reports.length} issues
+              Showing {filteredReports.length} of {openReports.length} open issues
               {userWard && filterZone === 'all' && (
                 <span className="ml-2">
                   · <button

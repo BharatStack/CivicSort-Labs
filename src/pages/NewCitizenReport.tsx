@@ -6,8 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, ArrowRight, Check, MapPin, Camera, Upload, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, MapPin, Camera, Upload, X, Loader2, Copy, Navigation, Search } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { supabase } from '@/integrations/supabase/client';
+import { playSuccessChime } from '@/lib/sounds';
+import { googleMapsDirectionsUrl } from '@/lib/utils';
 import { ISSUE_CATEGORIES, findNearestWard, getWardById, type BBMPWard, BBMP_ZONES } from '@/data/bbmpWards';
 import CategoryPicker from '@/components/reports/CategoryPicker';
 import BBMPMap from '@/components/reports/BBMPMap';
@@ -24,6 +27,7 @@ const NewCitizenReport: React.FC = () => {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState<{ id: string; token: string; wardName: string; lat: number; lng: number } | null>(null);
 
   // Form data
   const [category, setCategory] = useState<string | null>(null);
@@ -159,6 +163,16 @@ const NewCitizenReport: React.FC = () => {
 
       if (error) throw error;
 
+      playSuccessChime();
+
+      const token = (data as any)?.token as string | undefined;
+      if (token) {
+        // Show the tracking token; the citizen leaves via the dialog's buttons
+        setSubmitted({ id: (data as any).id, token, wardName: detectedWard.ward_name, lat: pinLocation.lat, lng: pinLocation.lng });
+        return;
+      }
+
+      // Token column not set up yet (migration v3 not run) — keep the old behaviour
       toast({
         title: '🎉 Report Submitted!',
         description: `Your issue has been reported in ${detectedWard.ward_name} ward.`,
@@ -445,6 +459,71 @@ const NewCitizenReport: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Success dialog with the tracking token */}
+      <Dialog open={!!submitted} onOpenChange={(open) => { if (!open) navigate('/citizen-reports'); }}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          {submitted && (
+            <>
+              <DialogHeader>
+                <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
+                  <Check className="h-6 w-6 text-emerald-600" />
+                </div>
+                <DialogTitle className="text-center">Report submitted</DialogTitle>
+                <DialogDescription className="text-center">
+                  Your issue has been reported in {submitted.wardName} ward. Save this token to track your report.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+                <p className="text-[11px] font-semibold text-emerald-700 uppercase tracking-wider mb-1">Your token number</p>
+                <p className="font-mono text-2xl font-bold text-gray-900 tracking-wide select-all">{submitted.token}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 rounded-lg"
+                  onClick={() => {
+                    navigator.clipboard.writeText(submitted.token)
+                      .then(() => toast({ title: 'Token copied', description: submitted.token }))
+                      .catch(() => toast({ title: 'Copy failed', description: 'Select the token and copy it manually.' }));
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1.5" />
+                  Copy token
+                </Button>
+              </div>
+
+              <a
+                href={googleMapsDirectionsUrl(submitted.lat, submitted.lng)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 text-sm font-medium text-emerald-700 hover:text-emerald-800"
+              >
+                <Navigation className="h-4 w-4" />
+                Google Map location
+              </a>
+
+              <div className="grid gap-2">
+                <Button
+                  onClick={() => navigate(`/citizen-reports?track=${encodeURIComponent(submitted.token)}`)}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl h-11"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Track this report
+                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" className="rounded-xl" onClick={() => navigate(`/citizen-reports/${submitted.id}`)}>
+                    View report
+                  </Button>
+                  <Button variant="outline" className="rounded-xl" onClick={() => navigate('/citizen-reports')}>
+                    Back to reports
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

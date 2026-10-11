@@ -53,7 +53,9 @@ const WardDetails: React.FC = () => {
   }
 
   const zoneInfo = BBMP_ZONES[ward.zone];
-  const openCount = issues.filter(i => i.status !== 'resolved').length;
+  // Resolved issues count in the stats but are not listed publicly (trackable by token)
+  const openIssues = issues.filter(i => i.status !== 'resolved');
+  const openCount = openIssues.length;
   const resolvedCount = issues.filter(i => i.status === 'resolved').length;
   const resRate = issues.length > 0 ? Math.round((resolvedCount / issues.length) * 100) : 0;
 
@@ -124,7 +126,7 @@ const WardDetails: React.FC = () => {
           {/* Mini Map */}
           <div style={{ height: '200px' }}>
             <BBMPMap
-              issues={issues.map((i: any) => ({
+              issues={openIssues.map((i: any) => ({
                 id: i.id, title: i.title, latitude: i.latitude, longitude: i.longitude,
                 status: i.status, ward_id: i.ward_id,
               }))}
@@ -159,15 +161,15 @@ const WardDetails: React.FC = () => {
         <Separator className="mb-6" />
 
         {/* Issues */}
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Issues in {ward.ward_name} ({issues.length})</h2>
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Open issues in {ward.ward_name} ({openIssues.length})</h2>
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
           </div>
-        ) : issues.length === 0 ? (
+        ) : openIssues.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
             <CheckCircle2 className="h-12 w-12 text-emerald-200 mx-auto mb-3" />
-            <p className="font-medium text-gray-600">No issues reported in this ward</p>
+            <p className="font-medium text-gray-600">No open issues in this ward</p>
             <Button
               onClick={() => navigate(`/citizen-reports/new?ward=${ward.ward_id}`)}
               className="mt-4 bg-emerald-600 hover:bg-emerald-500 rounded-xl"
@@ -177,7 +179,7 @@ const WardDetails: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
-            {issues.map((issue: any, i: number) => (
+            {openIssues.map((issue: any, i: number) => (
               <IssueCard
                 key={issue.id}
                 issue={{ ...issue, ward_name: ward.ward_name, zone: ward.zone, comment_count: 0 }}

@@ -20,6 +20,7 @@ interface IssueCardProps {
     vote_count?: number;
     comment_count?: number;
     zone?: string | null;
+    token?: string | null;
   };
   index?: number;
 }
@@ -87,6 +88,10 @@ const IssueCard: React.FC<IssueCardProps> = ({ issue, index = 0 }) => {
                 <span className="text-lg">{catInfo.icon}</span>
                 <span className="text-xs font-medium text-gray-500">{catInfo.label}</span>
               </div>
+            )}
+
+            {issue.token && (
+              <p className="font-mono text-[10px] font-semibold text-emerald-700 tracking-wide mb-1">{issue.token}</p>
             )}
 
             {/* Title */}

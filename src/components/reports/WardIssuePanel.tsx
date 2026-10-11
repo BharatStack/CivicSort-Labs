@@ -64,7 +64,9 @@ const WardIssuePanel: React.FC<WardIssuePanelProps> = ({ ward, open, onClose }) 
   if (!ward) return null;
 
   const zoneInfo = BBMP_ZONES[ward.zone];
-  const openCount = issues.filter(i => i.status !== 'resolved').length;
+  // Resolved issues count in the stats but are not listed publicly (trackable by token)
+  const openIssues = issues.filter(i => i.status !== 'resolved');
+  const openCount = openIssues.length;
   const resolvedCount = issues.filter(i => i.status === 'resolved').length;
   const resolutionRate = issues.length > 0 ? Math.round((resolvedCount / issues.length) * 100) : 0;
 
@@ -163,7 +165,7 @@ const WardIssuePanel: React.FC<WardIssuePanelProps> = ({ ward, open, onClose }) 
         <div className="px-6 py-3">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-700">
-              Issues ({issues.length})
+              Open issues ({openIssues.length})
             </h3>
           </div>
         </div>
@@ -173,16 +175,16 @@ const WardIssuePanel: React.FC<WardIssuePanelProps> = ({ ward, open, onClose }) 
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600" />
             </div>
-          ) : issues.length === 0 ? (
+          ) : openIssues.length === 0 ? (
             <div className="text-center py-12">
               <CheckCircle2 className="h-12 w-12 text-emerald-300 mx-auto mb-3" />
-              <p className="text-sm font-medium text-gray-600">No issues reported</p>
+              <p className="text-sm font-medium text-gray-600">No open issues</p>
               <p className="text-xs text-gray-400 mt-1">This ward looks clean!</p>
             </div>
           ) : (
             <AnimatePresence>
               <div className="space-y-3 pb-4">
-                {issues.map((issue, index) => (
+                {openIssues.map((issue, index) => (
                   <motion.div
                     key={issue.id}
                     initial={{ opacity: 0, y: 10 }}

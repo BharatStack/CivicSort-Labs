@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, ThumbsUp, ThumbsDown, MessageSquare, MapPin, Clock, Share2, Landmark, User2, Send, Loader2, CheckCircle2, AlertTriangle, Trophy } from 'lucide-react';
+import { ArrowLeft, ThumbsUp, ThumbsDown, MessageSquare, MapPin, Clock, Share2, Landmark, User2, Send, Loader2, CheckCircle2, AlertTriangle, Trophy, Copy, Navigation } from 'lucide-react';
+import { googleMapsDirectionsUrl } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { ISSUE_CATEGORIES, BBMP_ZONES, getWardById, type BBMPWard } from '@/data/bbmpWards';
@@ -30,6 +31,7 @@ interface ReportDetail {
   user_id: string | null;
   resolved_at?: string | null;
   last_activity_at?: string | null;
+  token?: string | null;
 }
 
 interface Comment {
@@ -231,7 +233,10 @@ const CitizenReportDetails: React.FC = () => {
 
       toast({
         title: '🎉 Issue Resolved!',
-        description: ward ? `${ward.mla_name} (MLA) and ${ward.mp_name} (MP) have been awarded points.` : 'Thank you for confirming the resolution.',
+        description: [
+          ward ? `${ward.mla_name} (MLA) and ${ward.mp_name} (MP) have been awarded points.` : 'Thank you for confirming the resolution.',
+          report.token ? `It's now removed from the public dashboard. Track it anytime with token ${report.token}.` : '',
+        ].filter(Boolean).join(' '),
       });
     } catch (err: any) {
       console.error('Resolve error:', err);
@@ -245,7 +250,7 @@ const CitizenReportDetails: React.FC = () => {
     if (navigator.share) {
       navigator.share({
         title: report?.title || 'Civic Report',
-        text: `Check out this civic issue: ${report?.title}`,
+        text: `Check out this civic issue${report?.token ? ` (token ${report.token})` : ''}: ${report?.title}`,
         url: window.location.href,
       });
     } else {
@@ -391,6 +396,21 @@ const CitizenReportDetails: React.FC = () => {
             <Badge variant="outline" className="capitalize text-xs">{report.priority}</Badge>
           )}
           {isOwner && <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs">Your Report</Badge>}
+          {report.token && (
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(report.token!)
+                  .then(() => toast({ title: 'Token copied', description: report.token! }))
+                  .catch(() => toast({ title: 'Copy failed', description: 'Select the token and copy it manually.' }));
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+              title="Copy token"
+            >
+              Token <span className="font-mono">{report.token}</span>
+              <Copy className="h-3 w-3" />
+            </button>
+          )}
         </div>
 
         {/* Title */}
@@ -498,6 +518,22 @@ const CitizenReportDetails: React.FC = () => {
               interactive={false}
               showIssuePins={true}
             />
+          </div>
+        )}
+        {report.latitude && report.longitude && (
+          <div className="flex flex-wrap items-center justify-between gap-2 -mt-3 mb-6">
+            <a
+              href={googleMapsDirectionsUrl(report.latitude, report.longitude)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+            >
+              <Navigation className="h-4 w-4" />
+              Google Map location
+            </a>
+            <span className="text-xs text-gray-400 font-mono">
+              {report.latitude.toFixed(6)}, {report.longitude.toFixed(6)}
+            </span>
           </div>
         )}
 
