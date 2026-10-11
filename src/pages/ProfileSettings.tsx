@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, User, Mail, Phone, FileText, Shield, Save, Loader2, LogOut, Eye, EyeOff, Camera } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import MyReports from '@/components/reports/MyReports';
 
 const ProfileSettings: React.FC = () => {
   const navigate = useNavigate();
@@ -161,6 +162,9 @@ const ProfileSettings: React.FC = () => {
           <p className="text-sm text-gray-500">{user?.email}</p>
           <Badge variant="outline" className="mt-2 capitalize text-xs">{userType}</Badge>
         </motion.div>
+
+        {/* Citizen's own reports with their tokens */}
+        {user && <MyReports userId={user.id} />}
 
         {/* Profile Form */}
         <Card className="mb-6">

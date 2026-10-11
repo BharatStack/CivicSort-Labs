@@ -466,8 +466,24 @@ const NewCitizenReport: React.FC = () => {
           {submitted && (
             <>
               <DialogHeader>
-                <div className="mx-auto w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
-                  <Check className="h-6 w-6 text-emerald-600" />
+                {/* Success tick that pops in with the sound */}
+                <div className="relative mx-auto w-20 h-20 mb-2">
+                  <motion.div
+                    className="absolute inset-0 rounded-full bg-emerald-400"
+                    initial={{ scale: 0.6, opacity: 0.5 }}
+                    animate={{ scale: 1.6, opacity: 0 }}
+                    transition={{ duration: 0.9, ease: 'easeOut', delay: 0.15 }}
+                  />
+                  <motion.div
+                    className="relative w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/40"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 380, damping: 16 }}
+                  >
+                    <motion.div initial={{ scale: 0, rotate: -45 }} animate={{ scale: 1, rotate: 0 }} transition={{ delay: 0.15, type: 'spring', stiffness: 300 }}>
+                      <Check className="h-10 w-10 text-white" strokeWidth={3} />
+                    </motion.div>
+                  </motion.div>
                 </div>
                 <DialogTitle className="text-center">Report submitted</DialogTitle>
                 <DialogDescription className="text-center">
